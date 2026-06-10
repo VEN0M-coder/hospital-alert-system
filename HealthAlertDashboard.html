@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<meta http-equiv='refresh' content='30'>
+<title>Health Alert - WARNING</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#0f0f1a;color:#e0e0e0;padding:20px}
+h1{font-size:21px;color:#fff;display:inline}
+.badge{font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;margin-left:12px;vertical-align:middle;background:#2e1f00;color:#BA7517}
+.sub{font-size:12px;color:#555;margin:6px 0 16px}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.mc{background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:12px}
+.lb{font-size:11px;color:#555;margin-bottom:4px}
+.val{font-size:22px;font-weight:700;color:#BA7517}
+.sb{font-size:11px;color:#444;margin-top:2px}
+.arena{position:relative;background:#12122a;border:1px solid #2a2a45;border-radius:14px;overflow:hidden;height:300px;margin-bottom:14px}
+.al{position:absolute;top:12px;left:16px;font-size:11px;color:#333;letter-spacing:.05em;text-transform:uppercase;z-index:2}
+.clk{position:absolute;top:12px;right:16px;font-size:12px;color:#444;font-family:monospace;z-index:2}
+canvas{width:100%;height:100%}
+.abox{background:#1a1a2e;border:1px solid #2a2a45;border-radius:10px;padding:14px}
+.atitle{font-size:11px;color:#444;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.ai{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#aaa;padding:3px 0}
+.dot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;display:inline-block}
+.footer{text-align:center;font-size:11px;color:#333;margin-top:12px}
+</style>
+</head>
+<body>
+<h1>Health Enterprise Alert Monitor</h1><span class='badge'>WARNING</span>
+<div class='sub'>Last DB poll: 09-04-2026 14:34:52 | Auto-refreshes every 30 sec</div>
+<div class='metrics'>
+<div class='mc'><div class='lb'>Critical vitals</div><div class='val'>0</div><div class='sb'>last 15 min</div></div>
+<div class='mc'><div class='lb'>Bed occupancy</div><div class='val'>84%</div><div class='sb'>max ward</div></div>
+<div class='mc'><div class='lb'>Missed meds</div><div class='val'>5</div><div class='sb'>unacknowledged</div></div>
+<div class='mc'><div class='lb'>ER P1 wait</div><div class='val'>50 min</div><div class='sb'>triage P1</div></div>
+<div class='mc'><div class='lb'>Critical labs</div><div class='val'>0</div><div class='sb'>pending review</div></div>
+</div>
+<div class='arena' id='arena'>
+<span class='al'>Alert: WARNING</span>
+<span class='clk' id='clk'></span>
+<canvas id='c'></canvas>
+</div>
+<div class='abox'>
+<div class='atitle'>Live alerts from MySQL</div>
+<div class='ai'><span class='dot' style='background:#BA7517'></span><span>WARNING: Ward at 84% capacity</span></div>
+<div class='ai'><span class='dot' style='background:#BA7517'></span><span>WARNING: 5 missed doses</span></div>
+<div class='ai'><span class='dot' style='background:#BA7517'></span><span>WARNING: ER P1 wait = 50 min</span></div>
+</div>
+<div class='footer'>Java reads MySQL every 30 sec &rarr; ball updates automatically</div>
+<script>
+const C='#BA7517';
+const S=3.5;
+const R=24;
+const K=false;
+const cv=document.getElementById('c');
+const cx=cv.getContext('2d');
+const ar=document.getElementById('arena');
+let bx,by,vx,vy,st=0;
+function rsz(){
+  cv.width=ar.clientWidth;cv.height=ar.clientHeight;
+  if(!bx){bx=cv.width/2;by=cv.height/2;}
+}
+rsz();window.addEventListener('resize',rsz);
+bx=200;by=150;
+vx=Math.cos(Math.PI/4)*S;vy=Math.sin(Math.PI/4)*S;
+function draw(){
+  const W=cv.width,H=cv.height;
+  bx+=vx;by+=vy;vy+=0.22;
+  if(bx-R<0){bx=R;vx=Math.abs(vx);}
+  if(bx+R>W){bx=W-R;vx=-Math.abs(vx);}
+  if(by+R>H-8){by=H-8-R;vy=-Math.abs(vy)*.80;vx*=.98;}
+  if(by-R<30){by=30+R;vy=Math.abs(vy);}
+  let ox=0,oy=0;
+  if(K){st++;ox=(Math.random()-.5)*8*Math.sin(st*.4);oy=(Math.random()-.5)*6*Math.sin(st*.3);}
+  const x=bx+ox,y=by+oy;
+  cx.clearRect(0,0,W,H);
+  cx.strokeStyle='rgba(255,255,255,0.03)';cx.lineWidth=1;
+  for(let i=0;i<W;i+=40){cx.beginPath();cx.moveTo(i,0);cx.lineTo(i,H);cx.stroke();}
+  for(let j=0;j<H;j+=40){cx.beginPath();cx.moveTo(0,j);cx.lineTo(W,j);cx.stroke();}
+  for(let i=8;i>0;i--){
+    const tx=x-vx*i*.3,ty=y-vy*i*.3;
+    const a=Math.round(40*(i/8)).toString(16).padStart(2,'0');
+    cx.beginPath();cx.arc(tx,ty,R*(i/8)*.65,0,Math.PI*2);
+    cx.fillStyle=C+a;cx.fill();}
+  if(K){const p=.5+.5*Math.sin(st*.25);
+    cx.beginPath();cx.arc(x,y,R*1.5+p*8,0,Math.PI*2);
+    cx.strokeStyle=C+'55';cx.lineWidth=3;cx.stroke();
+    cx.beginPath();cx.arc(x,y,R*2.2+p*5,0,Math.PI*2);
+    cx.strokeStyle=C+'22';cx.lineWidth=2;cx.stroke();}
+  const g=cx.createRadialGradient(x-R*.3,y-R*.3,R*.05,x,y,R);
+  g.addColorStop(0,C+'ff');g.addColorStop(1,C+'bb');
+  cx.beginPath();cx.arc(x,y,R,0,Math.PI*2);cx.fillStyle=g;cx.fill();
+  cx.beginPath();cx.arc(x-R*.3,y-R*.3,R*.25,0,Math.PI*2);
+  cx.fillStyle='rgba(255,255,255,0.28)';cx.fill();
+  const fd=(H-y-R)/H,sw=Math.max(5,R*1.6*(1-fd*1.5));
+  cx.beginPath();cx.ellipse(bx,H-8,sw,5,0,0,Math.PI*2);
+  cx.fillStyle=`rgba(0,0,0,${Math.max(0,.4*(1-fd*2))})`;cx.fill();
+  cx.font='bold 13px Arial';cx.fillStyle=C+'88';cx.textAlign='right';
+  cx.fillText('ALERT: WARNING',W-16,H-14);
+  requestAnimationFrame(draw);
+}
+function tick(){
+  document.getElementById('clk').textContent=new Date().toLocaleTimeString();}
+setInterval(tick,1000);tick();draw();
+</script>
+</body>
+</html>
